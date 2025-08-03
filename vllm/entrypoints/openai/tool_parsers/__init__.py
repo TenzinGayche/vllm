@@ -3,6 +3,7 @@
 
 from .abstract_tool_parser import ToolParser, ToolParserManager
 from .deepseekv3_tool_parser import DeepSeekV3ToolParser
+from .gemma3_patch_tool_parser import Gemma3PatchToolParser
 from .glm4_moe_tool_parser import Glm4MoeModelToolParser
 from .granite_20b_fc_tool_parser import Granite20bFCToolParser
 from .granite_tool_parser import GraniteToolParser
@@ -42,4 +43,5 @@ __all__ = [
     "Glm4MoeModelToolParser",
     "Qwen3CoderToolParser",
     "Step3ToolParser",
+    "Gemma3PatchToolParser",
 ]
