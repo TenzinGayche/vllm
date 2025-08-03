@@ -91,15 +91,13 @@ class OutputData(NamedTuple):
 
 class SchedulerContext:
 
-    def __init__(self, multi_step_stream_outputs: bool = False):
+    def __init__(self) -> None:
         self.output_queue: Deque[OutputData] = deque()
         self.request_outputs: List[Union[RequestOutput,
                                          PoolingRequestOutput]] = []
         self.seq_group_metadata_list: Optional[
             List[SequenceGroupMetadata]] = None
         self.scheduler_outputs: Optional[SchedulerOutputs] = None
-
-        self.multi_step_stream_outputs: bool = multi_step_stream_outputs
 
     def append_output(self, outputs: List[SamplerOutput],
                       seq_group_metadata_list: List[SequenceGroupMetadata],
@@ -303,8 +301,7 @@ class LLMEngine:
         ]
 
         self.scheduler_contexts = [
-            SchedulerContext(multi_step_stream_outputs=self.scheduler_config.
-                             multi_step_stream_outputs)
+            SchedulerContext()
             for _ in range(self.parallel_config.pipeline_parallel_size)
         ]
 
@@ -1073,15 +1070,6 @@ class LLMEngine:
             for scheduler in self.scheduler:
                 scheduler.free_finished_seq_groups()
 
-        # For multi-step without streaming, don't create outputs each iteration
-        if not is_last_step and not ctx.multi_step_stream_outputs:
-            # Immediately process request outputs here (if callback is given)
-            if (finished_now
-                    and self.process_request_outputs_callback is not None):
-                self.process_request_outputs_callback(ctx.request_outputs)
-                ctx.request_outputs.clear()
-            return
-
         # Create the outputs
         for i in indices:
             if i in skip or i in finished_before or i in finished_now:
@@ -1100,13 +1088,7 @@ class LLMEngine:
             if request_output:
                 ctx.request_outputs.append(request_output)
 
-        # For multi-step with streaming, create outputs each iteration
-        if not is_last_step and ctx.multi_step_stream_outputs:
-            # Immediately process request outputs here (if callback is given)
-            if self.process_request_outputs_callback is not None:
-                self.process_request_outputs_callback(ctx.request_outputs)
-                ctx.request_outputs.clear()
-            return
+        # Create outputs only after processing the scheduler's results
 
         for seq_group in scheduler_outputs.ignored_seq_groups:
             params = seq_group.sampling_params
@@ -1367,8 +1349,7 @@ class LLMEngine:
                 self.cached_scheduler_outputs[0] = SchedulerOutputState()
 
             # is_first_step_output is True only when the num_steps of all
-            # the sequences are 1. When the num_steps > 1,
-            # multi_step_model_runner does the first-step output append.
+            # the sequences are 1.
             is_first_step_output: bool = False if not seq_group_metadata_list \
                 else seq_group_metadata_list[0].state.num_steps == 1
 

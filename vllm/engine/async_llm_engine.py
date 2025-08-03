@@ -372,8 +372,7 @@ class _AsyncLLMEngine(LLMEngine):
                     virtual_engine] = SchedulerOutputState()
 
             # is_first_step_output is True only when the num_steps of all
-            # the sequences are 1. When the num_steps > 1,
-            # multi_step_model_runner does the first-step output append.
+            # the sequences are 1.
             is_first_step_output: bool = False if not seq_group_metadata_list \
                 else seq_group_metadata_list[0].state.num_steps == 1
 
